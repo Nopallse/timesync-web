@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout/Layout';
 import Button from '../components/Common/Button';
 import ParticipantList from '../components/Meeting/ParticipantList';
 import LoadingSpinner from '../components/Common/LoadingSpinner';
@@ -127,17 +126,14 @@ const MeetingDetails: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner />
         </div>
-      </Layout>
     );
   }
 
   if (!meeting) {
     return (
-      <Layout>
         <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900">Meeting not found</h1>
@@ -151,7 +147,6 @@ const MeetingDetails: React.FC = () => {
             </Button>
           </div>
         </div>
-      </Layout>
     );
   }
 
@@ -187,7 +182,6 @@ const MeetingDetails: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Meeting Header */}
         <div className="border-b border-gray-200 pb-5 mb-6">
@@ -462,7 +456,6 @@ const MeetingDetails: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 
