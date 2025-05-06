@@ -1,50 +1,48 @@
 import type { User } from '../types/user.types';
 
-// Mock auth service using local storage for demo
 class AuthService {
-  private async delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+  private apiUrl = 'http://localhost:8000'; // Your Express backend URL
 
   async loginWithGoogle(): Promise<User> {
-    // Simulate API call
-    await this.delay(1000);
-    
-    const mockUser: User = {
-      id: '1',
-      email: 'user@example.com',
-      name: 'John Doe',
-      photoURL: 'https://via.placeholder.com/32',
-      createdAt: new Date(),
-      googleId: 'google-123',
-    };
-
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    localStorage.setItem('isAuthenticated', 'true');
-    
-    return mockUser;
+    // Redirect to backend OAuth route
+    window.location.href = `${this.apiUrl}/auth/google`;
+    // This will never actually return as the page redirects
+    return {} as User;
   }
 
   async logout(): Promise<void> {
-    // Simulate API call
-    await this.delay(500);
-    
-    localStorage.removeItem('user');
-    localStorage.removeItem('isAuthenticated');
+    try {
+      const response = await fetch(`${this.apiUrl}/auth/logout`, {
+        method: 'GET',
+        credentials: 'include', // Important for cookies
+      });
+      
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   }
 
   async getCurrentUser(): Promise<User | null> {
-    // Simulate API call
-    await this.delay(500);
-    
-    const userJson = localStorage.getItem('user');
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    
-    if (userJson && isAuthenticated === 'true') {
-      return JSON.parse(userJson);
+    try {
+      const response = await fetch(`${this.apiUrl}/auth/status`, {
+        method: 'GET',
+        credentials: 'include', // Important for cookies
+      });
+      
+      if (!response.ok) {
+        return null;
+      }
+      
+      const data = await response.json();
+      return data.success ? data.user : null;
+    } catch (error) {
+      console.error('Get current user error:', error);
+      return null;
     }
-    
-    return null;
   }
 }
 

@@ -2,7 +2,7 @@ export interface User {
     id: string;
     email: string;
     name: string;
-    photoURL?: string;
+    photo?: string;
     createdAt: Date;
     googleId?: string;
   }

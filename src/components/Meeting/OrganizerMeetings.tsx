@@ -1,45 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Meeting } from '../../types/meeting.types';
 import { useNavigate } from 'react-router-dom';
-
-// Dummy data for organizer meetings
-const dummyOrganizerMeetings: Meeting[] = [
-  {
-    id: '1',
-    title: 'Team Weekly Sync',
-    dateRange: 'May 9-15, 2025',
-    duration: '2 days',
-    participants: 9,
-    status: 'scheduled',
-    scheduledDate: 'May 9-10, 2025',
-    organizer: 'John Doe',
-    participantEmails: [],
-  },
-  {
-    id: '2',
-    title: 'Project Kickoff',
-    dateRange: 'May 12-20, 2025',
-    duration: '3 days',
-    participants: 15,
-    status: 'pending',
-    organizer: 'John Doe',
-    participantEmails: [],
-  },
-  {
-    id: '3',
-    title: 'Stakeholder Review',
-    dateRange: 'May 15-25, 2025',
-    duration: '1 day',
-    participants: 5,
-    status: 'cancelled',
-    organizer: 'John Doe',
-    participantEmails: [],
-  },
-];
+import { meetingService } from '../../services/meeting.service';
 
 const OrganizerMeetings: React.FC = () => {
-  const [meetings, setMeetings] = useState<Meeting[]>(dummyOrganizerMeetings);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      try {
+        setLoading(true);
+        const response = await meetingService.getUserMeetings("organized");
+        
+        // Filter meetings where user is the organizer
+        const organizerMeetings = response
+        
+        setMeetings(organizerMeetings);
+      } catch (err: any) {
+        console.error('Error fetching meetings:', err);
+        setError(err.response?.data?.message || 'Failed to load meetings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchMeetings();
+  }, []);
 
   const getStatusColor = (status: Meeting['status']) => {
     switch (status) {
@@ -82,6 +71,61 @@ const OrganizerMeetings: React.FC = () => {
   const handleViewDetails = (meetingId: string) => {
     navigate(`/meetings/organizer/${meetingId}`);
   };
+
+  const handleEditMeeting = (meetingId: string) => {
+    navigate(`/edit-meeting/${meetingId}`);
+  };
+
+  const handleCancelMeeting = async (meetingId: string) => {
+    if (window.confirm('Are you sure you want to cancel this meeting?')) {
+      try {
+        await meetingService.updateMeeting(meetingId, { status: 'cancelled' });
+        
+        // Update local state to reflect the change
+        setMeetings(prevMeetings => 
+          prevMeetings.map(meeting => 
+            meeting.id === meetingId 
+              ? { ...meeting, status: 'cancelled' } 
+              : meeting
+          )
+        );
+      } catch (err: any) {
+        console.error('Error cancelling meeting:', err);
+        alert('Failed to cancel meeting. Please try again.');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-red-700">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-2 text-sm font-medium text-red-700 hover:text-red-600"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -141,15 +185,24 @@ const OrganizerMeetings: React.FC = () => {
                 View Details
               </button>
               {meeting.status === 'pending' && (
-                <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <button 
+                  onClick={() => handleViewDetails(meeting.id)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
                   View Availability
                 </button>
               )}
-              <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              <button 
+                onClick={() => handleEditMeeting(meeting.id)}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
                 Edit Meeting
               </button>
               {meeting.status !== 'cancelled' && (
-                <button className="inline-flex items-center px-3 py-2 border border-red-600 rounded-md text-sm font-medium text-red-600 bg-white hover:bg-red-50">
+                <button 
+                  onClick={() => handleCancelMeeting(meeting.id)}
+                  className="inline-flex items-center px-3 py-2 border border-red-600 rounded-md text-sm font-medium text-red-600 bg-white hover:bg-red-50"
+                >
                   Cancel Meeting
                 </button>
               )}
@@ -165,6 +218,7 @@ const OrganizerMeetings: React.FC = () => {
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900">No meetings</h3>
           <p className="mt-1 text-sm text-gray-500">Get started by creating a new meeting.</p>
+        
         </div>
       )}
     </div>

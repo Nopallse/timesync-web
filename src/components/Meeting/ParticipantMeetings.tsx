@@ -1,46 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Meeting } from '../../types/meeting.types';
 import { useNavigate } from 'react-router-dom';
-
-// Dummy data for participant meetings
-const dummyParticipantMeetings: Meeting[] = [
-  {
-    id: '4',
-    title: 'Marketing Strategy Meeting',
-    dateRange: 'May 8-12, 2025',
-    duration: '1 day',
-    participants: 6,
-    status: 'scheduled',
-    scheduledDate: 'May 9, 2025',
-    organizer: 'Jane Smith',
-    participantEmails: [],
-  },
-  {
-    id: '5',
-    title: 'Client Presentation',
-    dateRange: 'May 14-18, 2025',
-    duration: '2 days',
-    participants: 10,
-    status: 'pending',
-    organizer: 'Mike Johnson',
-    participantEmails: [],
-  },
-];
+import { meetingService } from '../../services/meeting.service';
 
 interface ParticipantMeetingEvent extends Meeting {
-  syncStatus: 'synced' | 'not-synced';
+  participantToken: string;
+
 }
 
 const ParticipantMeetings: React.FC = () => {
-  const [meetings, setMeetings] = useState<ParticipantMeetingEvent[]>(
-    dummyParticipantMeetings.map(meeting => ({
-      ...meeting,
-      syncStatus: Math.random() > 0.5 ? 'synced' : 'not-synced'
-    }))
-  );
-
+  const [meetings, setMeetings] = useState<ParticipantMeetingEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      try {
+        setLoading(true);
+        const response = await meetingService.getUserMeetings("participating");
+        
+        // Filter meetings where user is a participant (not organizer)
+        const participantMeetings = response.filter(
+          meeting => !meeting.isOrganizer
+        ).map(meeting => ({
+          ...meeting,
+          // Add sync status based on whether the user has responded
+          syncStatus: meeting.hasResponded ? 'synced' as const : 'not-synced' as const,
+          participantToken: meeting.participantToken || ''
+        }));
+
+        console.log('Participant Meetings:', participantMeetings);
+        
+        setMeetings(participantMeetings);
+      } catch (err: any) {
+        console.error('Error fetching meetings:', err);
+        setError(err.response?.data?.message || 'Failed to load meetings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchMeetings();
+  }, []);
 
   const getStatusColor = (status: Meeting['status']) => {
     switch (status) {
@@ -55,28 +57,80 @@ const ParticipantMeetings: React.FC = () => {
     }
   };
 
-  const getSyncStatusColor = (status: ParticipantMeetingEvent['syncStatus']) => {
+  const getSyncStatusColor = (status: ParticipantMeetingEvent['hasResponded']) => {
     switch (status) {
-      case 'synced':
+      case true:
         return 'bg-green-100 text-green-800';
-      case 'not-synced':
+      case false:
         return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const handleSyncCalendar = (meetingId: string) => {
-    setMeetings(prev => prev.map(meeting => 
-      meeting.id === meetingId 
-        ? { ...meeting, syncStatus: 'synced' } 
-        : meeting
-    ));
+  const handleSyncCalendar = async (meetingId: string) => {
+    try {
+      // Redirect to the meeting details page where user can provide availability
+      navigate(`/meetings/participant/${meetingId}`);
+    } catch (err) {
+      console.error('Error navigating to meeting details:', err);
+    }
   };
 
   const handleViewDetails = (meetingId: string) => {
     navigate(`/meetings/participant/${meetingId}`);
   };
+
+  const handleDeclineInvitation = async (meetingId: string) => {
+    if (window.confirm('Are you sure you want to decline this invitation?')) {
+      try {
+        // Find the participant token for this meeting
+        const meeting = meetings.find(m => m.id === meetingId);
+        if (!meeting) return;
+        
+        await meetingService.respondToInvitation(meeting.participantToken!, 'declined');
+        
+        // Update local state to reflect the change
+        setMeetings(prevMeetings => 
+          prevMeetings.filter(meeting => meeting.id !== meetingId)
+        );
+      } catch (err: any) {
+        console.error('Error declining invitation:', err);
+        alert('Failed to decline invitation. Please try again.');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-red-700">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-2 text-sm font-medium text-red-700 hover:text-red-600"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -97,8 +151,8 @@ const ParticipantMeetings: React.FC = () => {
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(meeting.status)}`}>
                   <span className="capitalize">{meeting.status}</span>
                 </span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSyncStatusColor(meeting.syncStatus)}`}>
-                  {meeting.syncStatus === 'synced' ? 'Calendar Synced' : 'Not Synced'}
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSyncStatusColor(meeting.hasResponded)}`}>
+                  {meeting.hasResponded === true ? 'Calendar Synced' : 'Not Synced'}
                 </span>
               </div>
             </div>
@@ -138,7 +192,7 @@ const ParticipantMeetings: React.FC = () => {
             )}
 
             <div className="mt-6 flex space-x-4">
-              {meeting.syncStatus === 'not-synced' && (
+              {meeting.hasResponded === false && (
                 <button
                   onClick={() => handleSyncCalendar(meeting.id)}
                   className="inline-flex items-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
@@ -155,7 +209,9 @@ const ParticipantMeetings: React.FC = () => {
                 View Details
               </button>
               {meeting.status === 'pending' && (
-                <button className="inline-flex items-center px-3 py-2 border border-red-600 rounded-md text-sm font-medium text-red-600 bg-white hover:bg-red-50">
+                <button 
+                  onClick={() => handleDeclineInvitation(meeting.id)}
+                  className="inline-flex items-center px-3 py-2 border border-red-600 rounded-md text-sm font-medium text-red-600 bg-white hover:bg-red-50">
                   Decline Invitation
                 </button>
               )}

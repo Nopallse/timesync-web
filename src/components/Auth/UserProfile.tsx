@@ -7,6 +7,8 @@ const UserProfile: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
+  console.log('User:', user);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -33,7 +35,7 @@ const UserProfile: React.FC = () => {
             <span className="sr-only">Open user menu</span>
             <img
               className="h-8 w-8 rounded-full"
-              src={user.photoURL || 'https://via.placeholder.com/32'}
+              src={user.photo || 'https://via.placeholder.com/32'}
               alt=""
             />
           </button>

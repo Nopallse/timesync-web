@@ -25,33 +25,34 @@ const MeetingDetails: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 800));
         
         // Mock data for the selected meeting
-        const mockMeeting: Meeting = {
-          id: id || '1',
-          title: 'Q2 Product Planning Meeting',
-          dateRange: 'May 5 - May 15, 2025',
-          duration: '60 minutes',
-          participants: 8,
-          status: 'pending',
-          organizer: 'John Doe',
-          participantEmails: [
-            'alice@example.com',
-            'bob@example.com',
-            'charlie@example.com',
-            'david@example.com',
-            'ellen@example.com',
-            'frank@example.com',
-            'grace@example.com',
-            'henry@example.com'
-          ],
-          availableSlots: [
-            { date: 'May 9, 2025 - 10:00 AM', participants: 8 },
-            { date: 'May 10, 2025 - 2:00 PM', participants: 7 },
-            { date: 'May 12, 2025 - 11:00 AM', participants: 6 },
-            { date: 'May 14, 2025 - 3:00 PM', participants: 5 }
-          ]
-        };
+        // // const mockMeeting: Meeting = {
+        // //   id: id || '1',
+        // //   title: 'Q2 Product Planning Meeting',
+        // //   dateRange: 'May 5 - May 15, 2025',
+        // //   duration: '60 minutes',
+        // //   participants: 8,
+        // //   status: 'pending',
+        // //   organizer: 'John Doe',
+        // //   success: true,
+        // //   participantEmails: [
+        // //     'alice@example.com',
+        // //     'bob@example.com',
+        // //     'charlie@example.com',
+        // //     'david@example.com',
+        // //     'ellen@example.com',
+        // //     'frank@example.com',
+        // //     'grace@example.com',
+        // //     'henry@example.com'
+        // //   ],
+        // //   availableSlots: [
+        // //     { date: 'May 9, 2025 - 10:00 AM', participants: 8 },
+        // //     { date: 'May 10, 2025 - 2:00 PM', participants: 7 },
+        // //     { date: 'May 12, 2025 - 11:00 AM', participants: 6 },
+        // //     { date: 'May 14, 2025 - 3:00 PM', participants: 5 }
+        // //   ]
+        // // };
         
-        setMeeting(mockMeeting);
+        // setMeeting(mockMeeting);
       } catch (error) {
         console.error('Error fetching meeting:', error);
       } finally {

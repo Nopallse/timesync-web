@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Input from '../Common/Input';
 import Button from '../Common/Button';
+import CalendarSelector from './CalendarSelector';
 import type { CreateMeetingForm } from '../../types/meeting.types';
 
 interface MeetingFormProps {
@@ -38,6 +39,24 @@ const MeetingForm: React.FC<MeetingFormProps> = ({ onSubmit, loading = false }) 
     }
   };
 
+  const handleDateRangeSelect = (startDate: string, endDate: string) => {
+    setFormData(prev => ({
+      ...prev,
+      startDate,
+      endDate
+    }));
+    
+    // Clear date-related errors
+    if (errors.startDate || errors.endDate) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.startDate;
+        delete newErrors.endDate;
+        return newErrors;
+      });
+    }
+  };
+
   const handleTimeChange = (field: 'startTime' | 'endTime', value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -61,7 +80,7 @@ const MeetingForm: React.FC<MeetingFormProps> = ({ onSubmit, loading = false }) 
     
     if (!formData.endDate) {
       newErrors.endDate = 'End date is required';
-    } else if (formData.startDate && new Date(formData.endDate) <= new Date(formData.startDate)) {
+    } else if (formData.startDate && new Date(formData.endDate) < new Date(formData.startDate)) {
       newErrors.endDate = 'End date must be after start date';
     }
     
@@ -91,9 +110,6 @@ const MeetingForm: React.FC<MeetingFormProps> = ({ onSubmit, loading = false }) 
     }
   };
 
-  // Get today's date formatted as YYYY-MM-DD for min attribute
-  const today = new Date().toISOString().split('T')[0];
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
@@ -110,30 +126,20 @@ const MeetingForm: React.FC<MeetingFormProps> = ({ onSubmit, loading = false }) 
         />
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          type="date"
-          name="startDate"
-          label="Start Date"
-          value={formData.startDate}
-          onChange={handleChange}
-          min={today}
-          error={errors.startDate}
-          fullWidth
-          required
+      <div>
+        <label className="block text-gray-700 text-sm font-medium mb-2">
+          Select Meeting Date Range
+        </label>
+        <CalendarSelector 
+          onDateRangeSelect={handleDateRangeSelect}
+          initialStartDate={formData.startDate}
+          initialEndDate={formData.endDate}
         />
-        
-        <Input
-          type="date"
-          name="endDate"
-          label="End Date"
-          value={formData.endDate}
-          onChange={handleChange}
-          min={formData.startDate || today}
-          error={errors.endDate}
-          fullWidth
-          required
-        />
+        {(errors.startDate || errors.endDate) && (
+          <p className="text-red-500 text-xs italic mt-1">
+            {errors.startDate || errors.endDate}
+          </p>
+        )}
       </div>
       
       <div>

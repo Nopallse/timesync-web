@@ -14,7 +14,7 @@ class AuthService {
       id: '1',
       email: 'user@example.com',
       name: 'John Doe',
-      photoURL: 'https://via.placeholder.com/32',
+      photo: 'https://via.placeholder.com/32',
       createdAt: new Date(),
       googleId: 'google-123',
     };

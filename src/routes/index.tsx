@@ -10,6 +10,8 @@ import MeetingDetails from '../pages/MeetingDetails';
 import MeetingPage from '../pages/MeetingPage';
 import OrganizerMeetingDetail from '../pages/OrganizerMeetingDetail';
 import ParticipantMeetingDetails from '../pages/DetailParticipantMeetings';
+import ParticipantPage from '../pages/ParticipantPage';
+
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -17,6 +19,8 @@ const AppRoutes: React.FC = () => {
       <Route element={<PublicRoute />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+
+
       </Route>
 
       {/* Private Routes */}
@@ -27,6 +31,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/meetings" element={<MeetingPage  />} />
         <Route path="/meetings/organizer/:id" element={<OrganizerMeetingDetail />} />
         <Route path="/meetings/participant/:id" element={<ParticipantMeetingDetails />} />
+        <Route path="/meetings/join/:token" element={<ParticipantMeetingDetails />} />
 
       </Route>
     </Routes>
