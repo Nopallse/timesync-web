@@ -8,6 +8,11 @@ export interface Meeting {
   isOrganizer: boolean;
   hasResponded: boolean;
   participantToken: string;
+  invitations?: { 
+    id: string;
+    email: string; 
+    status: 'pending' | 'accepted' | 'declined';
+  }[];
   status: 'pending' | 'scheduled' | 'cancelled';
   availableSlots?: Array<{
     date: string;
@@ -23,6 +28,8 @@ export interface Meeting {
     endTime: string;
   };
 }
+
+
 
 export interface CreateMeetingForm {
   title: string;

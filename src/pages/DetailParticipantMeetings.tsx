@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import type { Meeting } from '../types/meeting.types';
 import { meetingService } from '../services/meeting.service';
 import { calendarService } from '../services/calendar.service';
+import MeetingCalendar from '../components/Meeting/MeetingCalendar';
 
 interface ParticipantMeetingDetails extends Meeting {
   invitationStatus?: 'accepted' | 'declined' | 'pending';
@@ -11,6 +12,13 @@ interface ParticipantMeetingDetails extends Meeting {
     unavailable: string[];
   };
   selectedDates?: string[];
+}
+
+interface AvailabilitySlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+  isConflict: boolean;
 }
 
 const DetailParticipantMeetings: React.FC = () => {
@@ -22,8 +30,8 @@ const DetailParticipantMeetings: React.FC = () => {
   const [isActioning, setIsActioning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const { token } = useParams<{ token: string }>();
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -54,33 +62,31 @@ const DetailParticipantMeetings: React.FC = () => {
     fetchMeetingDetails();
   }, [id]);
 
-
-  const searchParams = new URLSearchParams(location.search);
-    useEffect(() => {
-      const fetchMeeting = async () => {
-        if (!token) {
-          setError('Meeting token is missing.');
-          setLoading(false);
-          return;
-        }
-  
-        try {
-          setLoading(true);
-          const meetingData = await meetingService.getMeetingByToken(token);
-          // Set the meeting data
-          setMeeting(meetingData);
-        } catch (err: any) {
-          console.error('Error fetching meeting:', err);
-          setError(err.response?.data?.message || 'Failed to load meeting information');
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      if (token) {
-        fetchMeeting();
+  useEffect(() => {
+    const fetchMeeting = async () => {
+      if (!token) {
+        setError('Meeting token is missing.');
+        setLoading(false);
+        return;
       }
-    }, [token]);
+
+      try {
+        setLoading(true);
+        const meetingData = await meetingService.getMeetingByToken(token);
+        // Set the meeting data
+        setMeeting(meetingData);
+      } catch (err: any) {
+        console.error('Error fetching meeting:', err);
+        setError(err.response?.data?.message || 'Failed to load meeting information');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      fetchMeeting();
+    }
+  }, [token]);
 
   const getStatusColor = (status: Meeting['status']) => {
     switch (status) {
@@ -153,15 +159,18 @@ const DetailParticipantMeetings: React.FC = () => {
       );
       
       // Generate all possible time slots
-      const allSlots = generateTimeSlots(startDate, endDate, startTime, endTime, duration);
+      const allTimeSlots = generateTimeSlots(startDate, endDate, startTime, endTime, duration);
       
-      // Check each slot against calendar events
-      const availableSlots = allSlots.filter(slot => {
+      // Identify user's available and conflict slots
+      const availableSlots: AvailabilitySlot[] = [];
+      const conflictSlots: AvailabilitySlot[] = [];
+      
+      allTimeSlots.forEach(slot => {
         const slotStart = new Date(`${slot.date}T${slot.startTime}`);
         const slotEnd = new Date(`${slot.date}T${slot.endTime}`);
         
         // Check if this slot conflicts with any calendar event
-        return !events.some(event => {
+        const hasConflict = events.some(event => {
           const eventStart = new Date(event.start.dateTime || event.start.date);
           const eventEnd = new Date(event.end.dateTime || event.end.date);
           
@@ -172,15 +181,37 @@ const DetailParticipantMeetings: React.FC = () => {
             (slotStart <= eventStart && slotEnd >= eventEnd)
           );
         });
+        
+        if (hasConflict) {
+          conflictSlots.push({
+            date: slot.date, // Just use the date without time
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            isConflict: true
+          });
+        } else {
+          availableSlots.push({
+            date: slot.date, // Just use the date without time
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            isConflict: false
+          });
+        }
       });
       
-      // Extract available dates and times
-      const availableTimes = availableSlots.map(slot => 
-        `${slot.date}T${slot.startTime}-${slot.endTime}`
-      );
+      // Store all slots for reference
+      setAvailabilitySlots([...availableSlots, ...conflictSlots]);
       
-      // Submit availability to backend
-      await meetingService.submitAvailability(id, availableTimes);
+      // Format data for backend in the expected structure
+      // Instead of just sending the dates, we'll send objects with date, startTime, and endTime
+      const formattedAvailableSlots = availableSlots.map(slot => ({
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      }));
+      
+      // Submit availability to backend - we need to modify the meetingService.submitAvailability function
+      await meetingService.submitAvailability(id, formattedAvailableSlots);
       
       // Update local state
       setMeeting(prev => {
@@ -199,67 +230,62 @@ const DetailParticipantMeetings: React.FC = () => {
     }
   };
 
-// Generate all possible time slots based on form inputs
-const generateTimeSlots = (
-  startDate: Date, 
-  endDate: Date, 
-  startTime: string, 
-  endTime: string, 
-  duration: number
-) => {
-  const slots = [];
-  const currentDate = new Date(startDate);
-  const lastDate = new Date(endDate);
-  
-  // Loop through each day in the date range
-  while (currentDate <= lastDate) {
-    const dateStr = currentDate.toISOString().split('T')[0];
+  // Generate all possible time slots based on form inputs
+  const generateTimeSlots = (
+    startDate: Date, 
+    endDate: Date, 
+    startTime: string, 
+    endTime: string, 
+    duration: number
+  ) => {
+    const slots = [];
+    const currentDate = new Date(startDate);
+    const lastDate = new Date(endDate);
     
-    // Parse start and end time
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    
-    // Set current time to start time
-    let currentSlotTime = new Date(currentDate);
-    currentSlotTime.setHours(startHour, startMinute, 0, 0);
-    
-    // Set end time for the day
-    let endTimeForDay = new Date(currentDate);
-    endTimeForDay.setHours(endHour, endMinute, 0, 0);
-    
-    // Generate slots for this day
-    while (currentSlotTime.getTime() + duration * 60 * 60 * 1000 <= endTimeForDay.getTime()) {
-      const slotEndTime = new Date(currentSlotTime.getTime() + duration * 60 * 60 * 1000);
+    // Loop through each day in the date range
+    while (currentDate <= lastDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
       
-      slots.push({
-        date: dateStr,
-        startTime: currentSlotTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        endTime: slotEndTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        available: 0,
-        participants: []
-      });
+      // Parse start and end time
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const [endHour, endMinute] = endTime.split(':').map(Number);
       
-      // Move to next slot
-      currentSlotTime = slotEndTime;
+      // Set current time to start time
+      let currentSlotTime = new Date(currentDate);
+      currentSlotTime.setHours(startHour, startMinute, 0, 0);
+      
+      // Set end time for the day
+      let endTimeForDay = new Date(currentDate);
+      endTimeForDay.setHours(endHour, endMinute, 0, 0);
+      
+      // Generate slots for this day
+      while (currentSlotTime.getTime() + duration * 60 * 60 * 1000 <= endTimeForDay.getTime()) {
+        const slotEndTime = new Date(currentSlotTime.getTime() + duration * 60 * 60 * 1000);
+        
+        slots.push({
+          date: dateStr,
+          startTime: currentSlotTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          endTime: slotEndTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          available: 0,
+          participants: []
+        });
+        
+        // Move to next slot
+        currentSlotTime = slotEndTime;
+      }
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
     }
     
-    // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return slots;
-};
+    return slots;
+  };
 
   const handleAcceptInvitation = async () => {
-    console.log(meeting);
-
     if (!meeting?.participantToken) return;
     
-    console.log('Accepting invitation with token:', meeting.participantToken);
-
     setIsActioning(true);
     try {
-      console.log('Accepting invitation with token:', meeting.participantToken);
       await meetingService.respondToInvitation(meeting.participantToken, 'accepted');
       
       setMeeting(prev => {
@@ -398,7 +424,7 @@ const generateTimeSlots = (
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Duration</p>
-              <p className="text-sm text-gray-900">{meeting.duration}</p>
+              <p className="text-sm text-gray-900">{meeting.duration} hour(s)</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Total Participants</p>
@@ -413,28 +439,56 @@ const generateTimeSlots = (
           </div>
         </div>
 
-        {/* Available Dates */}
-        {meeting.status === 'pending' && meeting.availableSlots && meeting.availableSlots.length > 0 && (
+        {/* Calendar View */}
+        <div className="p-6 border-b border-gray-200">
+          <MeetingCalendar
+            dateRange={meeting.dateRange}
+            duration={meeting.duration}
+            timeRange={meeting.timeRange || { startTime: '08:00', endTime: '17:00' }}
+            participantEmails={meeting.participantEmails || []}
+            availableSlots={meeting.availableSlots || []}
+          />
+        </div>
+
+        {/* Availability Summary (only show when synced) */}
+        {meeting.hasResponded && availabilitySlots.length > 0 && (
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Available Dates</h2>
-            <div className="space-y-2">
-              {meeting.availableSlots.map((slot, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {formatDate(slot.date)}
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Availability Summary</h2>
+            <div>
+              <p className="text-sm text-gray-700 mb-2">
+                You are available for {availabilitySlots.filter(slot => !slot.isConflict).length} out of {availabilitySlots.length} possible time slots.
+              </p>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {availabilitySlots
+                  .filter(slot => !slot.isConflict)
+                  .slice(0, 4)
+                  .map((slot, index) => {
+                    return (
+                      <div key={index} className="bg-green-50 border border-green-200 rounded-md p-3">
+                        <div className="flex items-center">
+                          <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <p className="text-sm font-medium text-green-800">
+                            {new Date(slot.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            })} · {slot.startTime} - {slot.endTime}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                }
+                {availabilitySlots.filter(slot => !slot.isConflict).length > 4 && (
+                  <div className="bg-gray-50 rounded-md p-3 border flex items-center justify-center">
+                    <p className="text-sm text-gray-600">
+                      + {availabilitySlots.filter(slot => !slot.isConflict).length - 4} more available times
                     </p>
                   </div>
-                  <div className="flex items-center">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {slot.participants} available
-                    </span>
-                  </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -451,7 +505,7 @@ const generateTimeSlots = (
                 Organizer
               </span>
             </div>
-            {meeting.participantEmails.map((email, index) => (
+            {meeting.participantEmails && meeting.participantEmails.map((email, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-md"

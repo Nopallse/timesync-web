@@ -6,13 +6,14 @@ class CalendarService {
   async getEvents(startDate?: string, endDate?: string): Promise<any[]> {
     try {
       const params: any = {};
-      if (startDate) params.timeMin = startDate;
-      if (endDate) params.timeMax = endDate;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
       
       const response = await axios.get(`${API_URL}/calendar/events`, {
         params,
         withCredentials: true
       });
+      console.log('Fetched events:', response.data.events);
       
       return response.data.events || [];
     } catch (error) {
@@ -142,6 +143,7 @@ class CalendarService {
       }, {
         withCredentials: true
       });
+      console.log('Time slot availability:', response.data.availableTimeSlots);
       return response.data.availableTimeSlots;
     } catch (error) {
       throw error;

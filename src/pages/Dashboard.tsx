@@ -6,9 +6,9 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import '../css/CalendarStyles.css'; 
+import { calendarService } from '../services/calendar.service';
 
 interface Meeting {
   id: string;
@@ -82,89 +82,26 @@ const Dashboard: React.FC = () => {
           },
         ]);
         
-        // Fetch calendar events from our backend API
+        // First check if the calendar is connected
         try {
-          const response = await axios.get('http://localhost:8000/calendar/events', {
-            params: {
-              timeMin: new Date().toISOString(),
-              maxResults: 50
-            },
-            withCredentials: true // Important for cookies/session
-          });
-          
-          // Transform the events data for FullCalendar
-          if (response.data.success) {
-            const formattedEvents = response.data.events.map((event: {
-              id: string;
-              summary: string;
-              start: { dateTime?: string; date?: string };
-              end: { dateTime?: string; date?: string };
-              colorId?: string;
-              description?: string;
-              location?: string;
-            }) => ({
-              id: event.id,
-              title: event.summary,
-              start: event.start.dateTime || event.start.date,
-              end: event.end.dateTime || event.end.date,
-              allDay: !event.start.dateTime,
-              backgroundColor: getEventColor(event.colorId),
-              borderColor: getEventColor(event.colorId),
-              extendedProps: {
-                description: event.description,
-                location: event.location
-              }
-            }));
+            // Fetch real calendar events using calendarService
+            const today = new Date();
+            const oneMonthLater = new Date(today);
+            oneMonthLater.setMonth(today.getMonth() + 1);
             
+            const events = await calendarService.getEvents(
+              today.toISOString(),
+              oneMonthLater.toISOString()
+            );
+            
+            // Use the formatEventsForCalendar method from calendarService
+            const formattedEvents = calendarService.formatEventsForCalendar(events);
             setCalendarEvents(formattedEvents);
-          }
+         
         } catch (err) {
-          console.error('Error fetching calendar events:', err);
-          
-          // Mock calendar events for development
-          const today = new Date();
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          
-          // Create example calendar events
-          const mockEvents = [
-            {
-              id: '1',
-              title: 'Weekly Standup',
-              start: new Date(today.setHours(10, 0, 0, 0)).toISOString(),
-              end: new Date(today.setHours(11, 0, 0, 0)).toISOString(),
-              backgroundColor: '#4285F4', // Google blue
-              borderColor: '#4285F4'
-            },
-            {
-              id: '2',
-              title: 'Product Review',
-              start: new Date(today.setHours(14, 0, 0, 0)).toISOString(),
-              end: new Date(today.setHours(15, 30, 0, 0)).toISOString(),
-              backgroundColor: '#0F9D58', // Google green
-              borderColor: '#0F9D58'
-            },
-            {
-              id: '3',
-              title: 'Client Meeting',
-              start: new Date(tomorrow.setHours(9, 0, 0, 0)).toISOString(),
-              end: new Date(tomorrow.setHours(10, 0, 0, 0)).toISOString(),
-              backgroundColor: '#DB4437', // Google red
-              borderColor: '#DB4437'
-            },
-            {
-              id: '4',
-              title: 'Team Lunch',
-              start: new Date(tomorrow.setHours(12, 0, 0, 0)).toISOString(),
-              end: new Date(tomorrow.setHours(13, 0, 0, 0)).toISOString(),
-              backgroundColor: '#F4B400', // Google yellow
-              borderColor: '#F4B400'
-            }
-          ];
-          
-          setCalendarEvents(mockEvents);
+          console.error('Error fetching calendar status or events:', err);
+          setError('Failed to load your calendar data. Please check your connection and try again.');
         }
-        
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to load your calendar and meetings. Please try again later.');
@@ -175,25 +112,6 @@ const Dashboard: React.FC = () => {
     
     fetchData();
   }, []);
-
-  // Helper function to get color based on Google Calendar colorId
-  const getEventColor = (colorId?: string) => {
-    const colors: {[key: string]: string} = {
-      '1': '#7986CB', // Lavender
-      '2': '#33B679', // Sage
-      '3': '#8E24AA', // Grape
-      '4': '#E67C73', // Flamingo
-      '5': '#F6BF26', // Banana
-      '6': '#F4511E', // Tangerine
-      '7': '#039BE5', // Peacock
-      '8': '#616161', // Graphite
-      '9': '#3F51B5', // Blueberry
-      '10': '#0B8043', // Basil
-      '11': '#D50000', // Tomato
-    };
-    
-    return colorId && colors[colorId] ? colors[colorId] : '#4285F4'; // Default to Google blue
-  };
 
   const handleEventClick = (info: any) => {
     const { event } = info;
@@ -214,6 +132,8 @@ const Dashboard: React.FC = () => {
       </>
     );
   };
+
+  
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -251,69 +171,64 @@ const Dashboard: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="mb-8 p-4 bg-white shadow rounded-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Your Calendar</h2>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => setCalendarView('timeGridDay')}
-                  className={`px-3 py-1 text-sm rounded-md ${calendarView === 'timeGridDay' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  Day
-                </button>
-                <button 
-                  onClick={() => setCalendarView('timeGridWeek')}
-                  className={`px-3 py-1 text-sm rounded-md ${calendarView === 'timeGridWeek' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  Week
-                </button>
-                <button 
-                  onClick={() => setCalendarView('dayGridMonth')}
-                  className={`px-3 py-1 text-sm rounded-md ${calendarView === 'dayGridMonth' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  Month
-                </button>
+         
+            <div className="mb-8 p-4 bg-white shadow rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Your Calendar</h2>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => setCalendarView('timeGridDay')}
+                    className={`px-3 py-1 text-sm rounded-md ${calendarView === 'timeGridDay' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Day
+                  </button>
+                  <button 
+                    onClick={() => setCalendarView('timeGridWeek')}
+                    className={`px-3 py-1 text-sm rounded-md ${calendarView === 'timeGridWeek' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Week
+                  </button>
+                  <button 
+                    onClick={() => setCalendarView('dayGridMonth')}
+                    className={`px-3 py-1 text-sm rounded-md ${calendarView === 'dayGridMonth' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Month
+                  </button>
+                </div>
+              </div>
+              <div className="calendar-container">
+                <FullCalendar
+                  plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+                  initialView={calendarView}
+                  headerToolbar={{
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: '' // We're using our custom buttons above
+                  }}
+                  events={calendarEvents}
+                  eventContent={renderEventContent}
+                  eventClick={handleEventClick}
+                  height="auto"
+                  slotDuration="00:30:00" // 30-minute slots
+                  slotLabelInterval={{ hours: 1 }} // Label every hour
+                  allDaySlot={true}
+                  allDayText="All Day"
+                  weekends={true}
+                  nowIndicator={true} // Shows a line for the current time
+                  slotMinTime="06:00:00" // Start at 6 AM
+                  slotMaxTime="22:00:00" // End at 10 PM
+                  expandRows={true} // Expand rows to fill height
+                  stickyHeaderDates={true}
+                  dayHeaderFormat={{ weekday: 'long', month: 'numeric', day: 'numeric', omitCommas: true }}
+                  slotLabelFormat={{
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    meridiem: 'short'
+                  }}
+                />
               </div>
             </div>
-            <div className="calendar-container">
-              <FullCalendar
-                plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-                initialView={calendarView}
-                headerToolbar={{
-                  left: 'prev,next today',
-                  center: 'title',
-                  right: '' // We're using our custom buttons above
-                }}
-                events={calendarEvents}
-                eventContent={renderEventContent}
-                eventClick={handleEventClick}
-                height="auto"
-                slotDuration="00:30:00" // 30-minute slots
-                slotLabelInterval={{ hours: 1 }} // Label every hour
-                allDaySlot={true}
-                allDayText="All Day"
-                weekends={true}
-                nowIndicator={true} // Shows a line for the current time
-                slotMinTime="06:00:00" // Start at 6 AM
-                slotMaxTime="22:00:00" // End at 10 PM
-                expandRows={true} // Expand rows to fill height
-                stickyHeaderDates={true}
-                dayHeaderFormat={{ weekday: 'long', month: 'numeric', day: 'numeric', omitCommas: true }}
-                slotLabelFormat={{
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  meridiem: 'short'
-                }}
-              />
-            </div>
-          </div>
-
-          {/* <h2 className="text-xl font-semibold mb-4">Your Meetings</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {meetings.map(meeting => (
-              <MeetingCard key={meeting.id} meeting={meeting} />
-            ))}
-          </div> */}
+         
 
           {meetings.length === 0 && (
             <div className="text-center py-12 bg-white shadow rounded-lg">

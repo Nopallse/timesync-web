@@ -2,6 +2,11 @@ import axios from 'axios';
 import type { Meeting, CreateMeetingForm } from '../types/meeting.types';
 
 const API_URL = 'http://localhost:8000';
+interface AvailabilitySlotData {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
 
 class MeetingService {
   async createMeeting(meetingData: CreateMeetingForm): Promise<Meeting> {
@@ -97,9 +102,10 @@ async respondToInvitation(participantToken: string, response: 'accepted' | 'decl
     }
   }
 
-  async submitAvailability(meetingId: string, availableDates: string[]): Promise<void> {
+  
+  async submitAvailability(meetingId: string, availableSlots: AvailabilitySlotData[]): Promise<void> {
     try {
-      await axios.post(`${API_URL}/meetings/${meetingId}/availability`, { availableDates }, {
+      await axios.post(`${API_URL}/meetings/${meetingId}/availability`, { availableSlots }, {
         withCredentials: true
       });
     } catch (error) {
