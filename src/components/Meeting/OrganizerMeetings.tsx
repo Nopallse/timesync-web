@@ -192,20 +192,20 @@ const OrganizerMeetings: React.FC = () => {
                   View Availability
                 </button>
               )}
-              <button 
+              {/* <button 
                 onClick={() => handleEditMeeting(meeting.id)}
                 className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 Edit Meeting
-              </button>
-              {meeting.status !== 'cancelled' && (
+              </button> */}
+              {/* {meeting.status !== 'cancelled' && (
                 <button 
                   onClick={() => handleCancelMeeting(meeting.id)}
                   className="inline-flex items-center px-3 py-2 border border-red-600 rounded-md text-sm font-medium text-red-600 bg-white hover:bg-red-50"
                 >
                   Cancel Meeting
                 </button>
-              )}
+              )} */}
             </div>
           </div>
         ))}

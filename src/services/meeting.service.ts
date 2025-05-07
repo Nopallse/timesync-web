@@ -1,7 +1,8 @@
 import axios from 'axios';
 import type { Meeting, CreateMeetingForm } from '../types/meeting.types';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface AvailabilitySlotData {
   date: string;
   startTime: string;
@@ -69,7 +70,7 @@ class MeetingService {
  */
 async respondToInvitation(participantToken: string, response: 'accepted' | 'declined'): Promise<any> {
     const result = await axios.post(
-      `http://localhost:8000/invitation/${participantToken}/respond`,
+      `${API_URL}/invitation/${participantToken}/respond`,
       { response },
       { withCredentials: true }
     );

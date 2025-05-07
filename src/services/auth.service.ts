@@ -1,7 +1,7 @@
 import type { User } from '../types/user.types';
 
 class AuthService {
-  private apiUrl = 'http://localhost:8000'; // Your Express backend URL
+  private apiUrl = import.meta.env.VITE_API_URL; // Assuming you have a .env file with your API URL
 
   async loginWithGoogle(): Promise<User> {
     // Redirect to backend OAuth route

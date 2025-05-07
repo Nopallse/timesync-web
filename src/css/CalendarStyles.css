@@ -147,3 +147,23 @@
     padding: 0.0625rem 0.125rem;
   }
 } 
+
+.text-xxs {
+  font-size: 0.65rem;
+}
+
+.fc-event {
+  cursor: pointer;
+}
+
+.fc-event-title {
+  line-height: 1.2;
+}
+
+.fc-timegrid-event {
+  min-height: 1.5rem;
+}
+
+.fc-timegrid-event .fc-event-main {
+  padding: 0;
+}

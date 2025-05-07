@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 class CalendarService {
   async getEvents(startDate?: string, endDate?: string): Promise<any[]> {
@@ -149,6 +149,27 @@ class CalendarService {
       throw error;
     }
   }
+
+  async addMeetingToCalendar(meetingData: {
+    summary: string;
+    description: string;
+    location?: string;
+    start: { dateTime: string; timeZone?: string };
+    end: { dateTime: string; timeZone?: string };
+    attendees?: Array<{ email: string }>;
+  }): Promise<any> {
+    try {
+      const response = await axios.post(`${API_URL}/calendar/events`, meetingData, {
+        withCredentials: true
+      });
+      
+      return response.data.event;
+    } catch (error) {
+      console.error('Error adding meeting to calendar:', error);
+      throw error;
+    }
+  }
+
 
   // Disconnect calendar
   async disconnectCalendar() {

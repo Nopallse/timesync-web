@@ -4,6 +4,7 @@ import type { Meeting } from '../types/meeting.types';
 import { meetingService } from '../services/meeting.service';
 import { calendarService } from '../services/calendar.service';
 import MeetingCalendar from '../components/Meeting/MeetingCalendar';
+import { useAuth } from '../context/AuthContext';
 
 interface ParticipantMeetingDetails extends Meeting {
   invitationStatus?: 'accepted' | 'declined' | 'pending';
@@ -32,6 +33,7 @@ const DetailParticipantMeetings: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { token } = useParams<{ token: string }>();
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -133,6 +135,31 @@ const DetailParticipantMeetings: React.FC = () => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Tambahkan fungsi untuk format waktu
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    return `${hours}:${minutes}`;
+  };
+
+  // Tambahkan fungsi untuk menghitung waktu akhir berdasarkan waktu mulai dan durasi
+  const calculateEndTime = (startTime: string, duration: string) => {
+    if (!startTime || !duration) return '';
+    
+    const durationMatch = duration.match(/(\d+)/);
+    const durationHours = durationMatch ? parseInt(durationMatch[1]) : 0;
+    
+    const [startHour, startMinute, seconds] = startTime.split(':');
+    let endHour = parseInt(startHour) + durationHours;
+    
+    // Handle 24-hour format
+    if (endHour >= 24) {
+      endHour = endHour - 24;
+    }
+    
+    return `${endHour.toString().padStart(2, '0')}:${startMinute}:${seconds || '00'}`;
   };
 
   const handleSyncCalendar = async () => {
@@ -417,6 +444,60 @@ const DetailParticipantMeetings: React.FC = () => {
         {/* Meeting Details */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Meeting Details</h2>
+          
+          {/* Tambahkan section untuk status scheduled */}
+          {meeting.status === 'scheduled' && (
+            <div className="mb-6 bg-green-50 p-5 rounded-lg border-2 border-green-300 shadow-sm">
+              <div className="flex items-center">
+                <svg className="w-6 h-6 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-xl font-bold text-green-800">Meeting Scheduled!</h3>
+              </div>
+              
+              <div className="mt-4 ml-9">
+                <div className="flex items-center mb-3">
+                  <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-md font-semibold text-green-800">
+                    {meeting.scheduledDate ? formatDate(meeting.scheduledDate) : ''}
+                  </p>
+                </div>
+                
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-md font-semibold text-green-800">
+                    {meeting.scheduledTime ? formatTime(meeting.scheduledTime) : ''} - {meeting.scheduledTime && meeting.duration ? formatTime(calculateEndTime(meeting.scheduledTime, meeting.duration)) : ''}
+                    <span className="ml-2 text-sm font-normal text-green-700">({meeting.duration})</span>
+                  </p>
+                </div>
+                
+                <div className="mt-3 flex">
+                  <button
+                    onClick={() => {
+                      // Fungsi untuk menambahkan ke kalender
+                      const startDateTime = `${meeting.scheduledDate}T${meeting.scheduledTime}`;
+                      const endDateTime = `${meeting.scheduledDate}T${meeting.scheduledTime && meeting.duration ? calculateEndTime(meeting.scheduledTime, meeting.duration) : ''}`;
+                      const title = meeting.title;
+                      const details = `Meeting organized by ${meeting.organizer}`;
+                      
+                      // Buat URL untuk Google Calendar
+                      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startDateTime.replace(/[-:]/g, '')}/${endDateTime.replace(/[-:]/g, '')}&details=${encodeURIComponent(details)}`;
+                      
+                      // Buka di tab baru
+                      window.open(googleCalendarUrl, '_blank');
+                    }}
+                    className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium"
+                  >
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-gray-500">Date Range</p>
@@ -511,7 +592,7 @@ const DetailParticipantMeetings: React.FC = () => {
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
               >
                 <p className="text-sm text-gray-900">{email}</p>
-                {email === meeting.participantEmails[0] && (
+                {email === user?.email && (
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInvitationStatusColor(meeting.invitationStatus || 'pending')}`}>
                     You ({meeting.invitationStatus || 'pending'})
                   </span>

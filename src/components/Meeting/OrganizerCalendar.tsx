@@ -16,6 +16,9 @@ interface MeetingCalendarProps {
   availableSlots?: Array<{
     date: string;
     participants: number;
+    startTime?: string;
+    endTime?: string;
+    participantDetails?: any[];
   }>;
   onSlotSelect?: (slot: any) => void;
 }
@@ -42,7 +45,8 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [generatedSlots, setGeneratedSlots] = useState<any[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
-  
+  const totalParticipants = participantEmails.length;
+  console.log(totalParticipants,">>>>>>>>>>>>>>>>>>>>>");
   useEffect(() => {
     const fetchAndSetupCalendar = async () => {
       try {
@@ -167,17 +171,14 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
       return (
         <div className="fc-event-content overflow-hidden">
           <div className="fc-event-title text-xs truncate">
-            <svg className="inline-block w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {eventInfo.event.title}
+            
           </div>
         </div>
       );
     }
     
     if (extendedProps.type === 'slot') {
-      const percentage = Math.round((extendedProps.participants / extendedProps.totalParticipants) * 100);
+      const percentage = Math.round((extendedProps.participants / totalParticipants) * 100);
       
       if (extendedProps.hasConflict) {
         // Modified to show both conflict status and participant availability
@@ -187,7 +188,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
               <svg className="inline-block w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {extendedProps.participants} / {extendedProps.totalParticipants} ({percentage}%)
+              {extendedProps.participants} / {totalParticipants} ({percentage}%)
             </div>
           </div>
         );
@@ -199,7 +200,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
             <svg className="inline-block w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
-            {extendedProps.participants} / {extendedProps.totalParticipants} ({percentage}%)
+            {extendedProps.participants} / {totalParticipants} ({percentage}%)
           </div>
         </div>
       );
@@ -297,8 +298,6 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
   const handleSelectThisSlot = () => {
     if (selectedSlot && onSlotSelect) {
       onSlotSelect(selectedSlot);
-    } else if (selectedSlot) {
-      alert(`Selected slot: ${selectedSlot.date} at ${selectedSlot.startTime} - ${selectedSlot.endTime}`);
     }
   };
 
@@ -347,6 +346,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
               <FullCalendar
                 plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
                 initialView="timeGridWeek"
+                initialDate={dateRange.split(' to ')[0]} // Mengatur tanggal awal ke tanggal pertama dari range
                 headerToolbar={{
                   left: 'prev,next today',
                   center: 'title',
@@ -371,62 +371,6 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
             </div>
           </div>
           
-          {/* Slot selection details */}
-          {selectedSlot && (
-            <div className="p-4 border-t bg-gray-50">
-              <h4 className="font-medium text-gray-900 mb-2">Selected Time Slot</h4>
-              <div className="bg-white p-4 rounded-md border border-gray-200 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-lg font-medium text-gray-900">
-                      {new Date(selectedSlot.date).toLocaleDateString('en-US', { 
-                        weekday: 'long',
-                        month: 'long', 
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
-                    <p className="text-gray-700 mt-1">
-                      {selectedSlot.startTime} - {selectedSlot.endTime}
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        selectedSlot.hasConflict ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {`${selectedSlot.participants} of ${selectedSlot.totalParticipants} participants available`}
-                        {selectedSlot.hasConflict && (
-                          <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={handleSelectThisSlot}
-                    className={`px-4 py-2 rounded-md text-white text-sm font-medium ${
-                      selectedSlot.hasConflict
-                        ? 'bg-yellow-600 hover:bg-yellow-700'
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                  >
-                    {selectedSlot.hasConflict ? 'Select Despite Conflict' : 'Select This Slot'}
-                  </button>
-                </div>
-                
-                {selectedSlot.hasConflict && (
-                  <div className="mt-3 bg-red-50 p-3 rounded-md border border-red-100">
-                    <p className="text-sm text-red-700">
-                      <svg className="inline-block w-4 h-4 mr-1 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                      Warning: This time slot conflicts with your existing calendar events.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
