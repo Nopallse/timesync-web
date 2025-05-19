@@ -706,55 +706,7 @@ const OrganizerMeetingDetail: React.FC = () => {
             </div>
           )}
           
-          {meeting.status === 'pending' && meeting.availableSlots && meeting.availableSlots.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-md font-medium text-gray-900 mb-2">Schedule Meeting</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Select one of the available slots below to schedule the meeting.
-              </p>
-              <div className="space-y-2">
-                {meeting.availableSlots
-                  .slice(0, 3)
-                  .sort((a, b) => b.participants - a.participants) 
-                  .map((slot, index) => {
-                    const conflict = hasConflict(slot);
-                    
-                    return (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                        <div>
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium text-gray-900">
-                              {new Date(slot.date).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric'
-                              })} · {slot.startTime} - {slot.endTime}
-                            </p>
-                            {conflict && (
-                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                Conflict
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-500">{slot.participants} participants available</p>
-                        </div>
-                        <button 
-                          onClick={() => scheduleMeeting(slot.date, slot.startTime, slot.endTime)}
-                          className={`px-3 py-1 ${
-                            conflict 
-                              ? 'bg-yellow-600 hover:bg-yellow-700' 
-                              : 'bg-blue-600 hover:bg-blue-700'
-                          } text-white rounded-md text-sm`}
-                        >
-                          {conflict ? 'Schedule Anyway' : 'Select This Slot'}
-                        </button>
-                      </div>
-                    );
-                  })
-                }
-              </div>
-            </div>
-          )}
+          
         </div>
         )}
       </div>

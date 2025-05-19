@@ -1,11 +1,12 @@
 import type { User } from '../types/user.types';
 
 class AuthService {
-  private apiUrl = import.meta.env.VITE_API_URL; 
-  
+  private apiUrl = import.meta.env.VITE_API_URL;
+
   async loginWithGoogle(): Promise<User> {
     // Redirect to backend OAuth route
-    window.location.href = `${this.apiUrl}/auth/google/callback`;
+    console.log(`${this.apiUrl}/auth/google`);
+    window.location.href = `${this.apiUrl}/auth/google`;
     // This will never actually return as the page redirects
     return {} as User;
   }
